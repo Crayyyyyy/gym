@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Gym</title>
+<meta name="theme-color" content="#1E3A8A">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  /* ===== CYBERPUNK THEME =====
+     Each screen keeps its own color so you still know where you are at a glance:
+     HOME = violet/magenta · SET = black/yellow · REST = deep teal/cyan · DONE = crimson/magenta */
+  :root {
+    --home: #0D0221; --set: #050508; --rest: #00141A; --done: #1A0012;
+    --yellow: #FCEE0A; --cyan: #00F0FF; --magenta: #FF2A6D; --violet: #B967FF;
+    --font: "Orbitron", "Rajdhani", "Eurostile", "Bank Gothic", ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--set); color: #E8F7FF;
+    font-family: var(--font); text-transform: uppercase; letter-spacing: .06em;
+    user-select: none; -webkit-user-select: none; overscroll-behavior: none; }
+  #app { position: fixed; inset: 0; display: flex; justify-content: center; }
+  /* faint grid + CRT scanlines over everything */
+  body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      linear-gradient(transparent 95%, color-mix(in srgb, var(--acc, #00F0FF) 14%, transparent) 95%) 0 0 / 100% 36px,
+      linear-gradient(90deg, transparent 95%, color-mix(in srgb, var(--acc, #00F0FF) 10%, transparent) 95%) 0 0 / 36px 100%; }
+  body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px); }
+
+  body { --acc: var(--yellow); --acc2: var(--magenta); }
+  body[data-s=HOME] { --acc: var(--magenta); --acc2: var(--cyan); }
+  body[data-s=REST] { --acc: var(--cyan); --acc2: var(--magenta); }
+  body[data-s=DONE] { --acc: var(--magenta); --acc2: var(--yellow); }
+  .screen { width: 100%; max-width: 520px; height: 100%; display: flex; flex-direction: column;
+    align-items: center; text-align: center; position: relative; z-index: 1;
+    padding: calc(env(safe-area-inset-top) + 64px) 16px calc(env(safe-area-inset-bottom) + 24px); }
+
+  .grow { flex: 1 1 0; min-height: 8px; }
+  .dim { opacity: .7; } .dimmer { opacity: .45; }
+  .y { color: var(--acc); text-shadow: 0 0 8px var(--acc); }
+  .b { font-weight: 800; }
+  .xs { font-size: 12px; } .s { font-size: 14px; } .m { font-size: 16px; } .l { font-size: 20px; }
+  .xl { font-size: 26px; }
+  .tag { font-size: 12px; color: var(--acc2); opacity: .9; letter-spacing: .25em; }
+  .tag::before { content: "// "; }
+  .name { font-size: clamp(28px, 8.5vw, 42px); font-weight: 900; line-height: 1.1; margin: 8px 0 4px;
+    color: #fff; text-shadow: 2px 0 var(--acc2), -2px 0 var(--cyan), 0 0 18px color-mix(in srgb, var(--acc) 60%, transparent);
+    animation: glitch 4s infinite steps(1); }
+  @keyframes glitch {
+    0%, 92%, 100% { transform: none; text-shadow: 2px 0 var(--acc2), -2px 0 var(--cyan), 0 0 18px color-mix(in srgb, var(--acc) 60%, transparent); }
+    93% { transform: translate(-3px, 1px) skewX(-8deg); text-shadow: 5px 0 var(--acc2), -5px 0 var(--cyan); }
+    95% { transform: translate(3px, -1px); text-shadow: -4px 0 var(--acc2), 4px 0 var(--cyan); clip-path: inset(10% 0 40% 0); }
+    97% { transform: translate(-1px, 0); clip-path: none; }
+  }
+  .huge { font-size: clamp(76px, 25vw, 116px); font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1;
+    color: var(--acc); text-shadow: 0 0 10px var(--acc), 0 0 34px color-mix(in srgb, var(--acc) 55%, transparent), 3px 0 var(--acc2); }
+
+  /* angled "cut corner" shapes */
+  .big-btn, .grid button { clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px)); }
+  .big-btn { width: 100%; border: 0; background: var(--acc); color: #000; position: relative;
+    font: 900 32px var(--font); letter-spacing: .12em; text-transform: uppercase; height: 112px; cursor: pointer; }
+  .big-btn::after { content: ""; position: absolute; right: 26px; bottom: 12px; width: 46px; height: 5px;
+    background: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 10px); opacity: .55; }
+  .big-btn.dark { background: color-mix(in srgb, var(--acc) 14%, #000); color: var(--acc);
+    box-shadow: inset 0 0 0 2px var(--acc); }
+  .row { display: flex; gap: 10px; width: 100%; } .row .big-btn { height: 96px; }
+  .corner { position: absolute; top: calc(env(safe-area-inset-top) + 4px); border: 0; background: none; z-index: 2;
+    color: var(--acc); cursor: pointer; padding: 12px 22px; font-family: var(--font); }
+  .back { left: 0; font-size: 44px; font-weight: 900; line-height: 1; text-shadow: 0 0 10px var(--acc); }
+  .skip { right: 0; font-size: 14px; opacity: .6; padding-top: 22px; letter-spacing: .15em; text-transform: uppercase; }
+
+  .grid { display: grid; gap: 8px; width: 100%; }
+  .grid button { border: 0; background: #0E0E16; color: #CFEFFF; cursor: pointer;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cyan) 45%, transparent);
+    font: 800 28px var(--font); height: 70px; transition: transform .08s; }
+  .grid.c5 button { height: 58px; font-size: 23px; }
+  .grid button.in { background: var(--acc); color: #000; box-shadow: 0 0 16px var(--acc); }
+  button:active { transform: scale(.95); filter: brightness(1.25); }
+  .link { background: none; border: 0; color: var(--acc2); font: 12px var(--font); letter-spacing: .2em;
+    text-transform: uppercase; opacity: .55; padding: 8px; cursor: pointer; }
+
+  /* ===== tap feedback ===== */
+  .grid button.hit { background: #fff !important; color: #000 !important; transform: scale(1.08);
+    box-shadow: 0 0 30px #fff, 0 0 60px var(--acc) !important; }
+  .grid.locked button:not(.hit) { opacity: .25; transition: opacity .15s; }
+  #flash { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; pointer-events: none; opacity: 0; }
+  #flash.on { animation: flash .5s ease-out forwards; }
+  #flash .n { font: 900 clamp(120px, 40vw, 190px)/1 var(--font); color: #fff;
+    text-shadow: 0 0 20px var(--yellow), 0 0 60px var(--yellow), 6px 0 var(--magenta), -6px 0 var(--cyan); }
+  #flash .t { font: 800 22px var(--font); letter-spacing: .4em; color: var(--yellow); text-shadow: 0 0 10px var(--yellow); margin-top: 8px; }
+  @keyframes flash {
+    0% { opacity: 0; transform: scale(1.4) skewX(-10deg); background: rgba(252,238,10,.0); }
+    15% { opacity: 1; transform: scale(1) skewX(0); background: rgba(252,238,10,.18); }
+    30% { transform: translateX(-6px); }
+    40% { transform: translateX(4px); }
+    50% { transform: none; }
+    80% { opacity: 1; background: rgba(5,5,8,.3); }
+    100% { opacity: 0; }
+  }
+  /* ===== weight screen ===== */
+  .kg { font-size: clamp(60px, 21vw, 100px); }
+  .kg small { font-size: .32em; margin-left: .15em; opacity: .8; }
+  .grid.steps button { height: 64px; font-size: 20px; }
+  .grid.steps button.minus { color: var(--magenta); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--magenta) 55%, transparent); }
+  .grid.steps button.plus { color: var(--cyan); }
+  @media (prefers-reduced-motion: reduce) { .name { animation: none; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="flash"><div class="n"></div><div class="t">LOGGED</div></div>
+<script>
+"use strict";
+
+// =================== YOUR PLAN (edit here) ===================
+const MAIN = 120, ACC = 60; // rest seconds: main lifts / accessories
+const ex = (name, sets, repMin, repMax, o = {}) =>
+  ({ name, sets, repMin, repMax, seconds: 0, rest: ACC, amrap: false, addKg: 0, fixed: false, note: "", ...o });
+const timed = (name, sets, seconds, o = {}) => ({ ...ex(name, sets, 0, 0, o), seconds });
+const amrap = (name, sets, o = {}) => ex(name, sets, 0, 0, { amrap: true, ...o });
+const warmup = what => timed("Warm-up", 1, 300, { rest: 0, fixed: true, note: `dynamic: ${what}, then warm-up sets` });
+const stretch = (min, what) => timed("Static stretch", 1, min * 60, { rest: 0, fixed: true, note: `${what} · hold each 30–60 s` });
+
+const PUSH = [
+  ex("Bench press", 4, 5, 8, { rest: MAIN, addKg: 2.5 }),
+  ex("Overhead press", 3, 6, 10, { rest: MAIN, addKg: 2.5 }),
+  ex("Incline DB press", 3, 8, 12, { addKg: 2.5 }),
+  ex("Lateral raise", 5, 12, 20, { addKg: 2.5 }),
+  ex("Cable Y-raise", 3, 12, 15, { addKg: 2.5 }),
+  amrap("Dips", 3),
+  ex("Triceps pushdown", 3, 10, 15, { addKg: 2.5 }),
+];
+const pull = first => [
+  warmup("band pull-aparts, scapular pull-ups"),
+  first,
+  ex("Barbell row", 4, 6, 10, { rest: MAIN, addKg: 2.5 }),
+  amrap("Wide-grip pull-ups", 3),
+  ex("Straight-arm pulldown", 3, 12, 15, { addKg: 2.5 }),
+  ex("Rear delt fly", 3, 15, 20, { addKg: 2.5 }),
+  ex("Face pull", 3, 15, 20, { addKg: 2.5 }),
+  ex("Barbell curl", 3, 8, 12, { addKg: 2.5 }),
+  ex("Hammer curl", 2, 10, 15, { rest: 120, addKg: 2.5 }),
+  timed("Bag round", 8, 180, { rest: 60, fixed: true, note: "kickboxing · 6–10 rounds · tap “skip” to stop early" }),
+];
+const LEGS = [
+  ex("Back squat", 4, 5, 8, { rest: MAIN, addKg: 5 }),
+  ex("Romanian deadlift", 3, 6, 10, { rest: MAIN, addKg: 5 }),
+  ex("Leg press", 3, 10, 15, { addKg: 5 }),
+  ex("Leg curl", 3, 10, 15, { addKg: 5 }),
+  ex("Calf raise", 4, 10, 20, { addKg: 5 }),
+  ex("Lateral raise", 3, 15, 20, { addKg: 2.5 }),
+  ex("Hanging leg raise", 3, 10, 15),
+  ex("Dead bug", 3, 10, 10),
+];
+const PW = "arm circles, band pull-aparts", LW = "leg swings, bodyweight squats";
+// index 0 = Monday … 6 = Sunday
+const WORKOUTS = [
+  { name: "PUSH", exercises: [warmup(PW), ...PUSH, stretch(10, "pecs, front delts, upper back")] },
+  { name: "PULL + KICKBOXING", exercises: pull(ex("Deadlift", 3, 3, 5, { rest: 150, addKg: 5 })) },
+  { name: "LEGS", exercises: [warmup(LW), ...LEGS, stretch(12, "hip flexors, hamstrings, quads, calves")] },
+  { name: "PUSH", exercises: [warmup(PW), ...PUSH] },
+  { name: "PULL + KICKBOXING", exercises: pull(ex("Weighted pull-up", 4, 5, 8, { rest: MAIN, addKg: 2.5 })) },
+  { name: "LEGS", exercises: [warmup(LW), ...LEGS] },
+  { name: "REST DAY", note: "10k steps · yoga 30–45 min, or the stretch below",
+    exercises: [stretch(15, "lats, pecs, hip flexors, hamstrings, upper back")] },
+];
+const DAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+const SKIPPED = -1;
+const KG_STEPS = [2.5, 5, 10, 25, 50];
+// a logged set is either a number (reps/seconds) or { r: reps, kg }
+const repsOf = v => typeof v === "object" && v ? v.r : v;
+const kgOf = v => typeof v === "object" && v ? v.kg : undefined;
+const fmtKg = k => String(Math.round(k * 10) / 10);
+const fmtSet = v => kgOf(v) != null ? `${repsOf(v)}×${fmtKg(kgOf(v))}` : `${repsOf(v)}`;
+
+// =================== storage (never throws) ===================
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("gym." + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("gym." + k, JSON.stringify(v)); } catch {} },
+};
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const epochDay = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);
+const todayIdx = () => (new Date().getDay() + 6) % 7;
+
+// =================== state ===================
+let S = Object.assign({ screen: "HOME", workoutIdx: todayIdx(), week: 1, restEnd: 0, timerEnd: 0, timerStart: 0, session: [], pendingReps: 0, kg: 0 },
+  store.get("state", {}));
+let manualPick = false;
+if (S.screen === "HOME") S.workoutIdx = todayIdx();
+let steps = [];
+const workout = () => WORKOUTS[S.workoutIdx];
+const persist = () => store.set("state", S);
+
+function weekNow() {
+  const start = store.get("startDay", null);
+  return start == null ? 1 : Math.floor((epochDay() - start) / 7) + 1;
+}
+function setsFor(e, w) {
+  if (e.fixed) return e.sets;
+  if (w <= 2) return Math.min(e.sets, 2);
+  if (w % 6 === 0) return Math.ceil(e.sets / 2);
+  return e.sets;
+}
+const phaseText = w => w <= 2 ? "easy start: 2 sets, stop 3 reps short of failure"
+  : w % 6 === 0 ? "DELOAD: half the sets, same weights" : "full sets, stop 0–2 reps short of failure";
+
+function rebuild() {
+  steps = [];
+  workout().exercises.forEach((e, i) => {
+    const n = setsFor(e, S.week);
+    for (let s = 1; s <= n; s++) steps.push({ exIdx: i, ex: e, set: s, total: n });
+  });
+}
+rebuild();
+// plan changed since last time? start over
+if ((S.screen === "SET" || S.screen === "REST" || S.screen === "KG") && S.session.length >= steps.length ||
+    S.screen === "DONE" && S.session.length !== steps.length) {
+  S.screen = "HOME"; S.session = []; S.workoutIdx = todayIdx(); rebuild();
+}
+
+// =================== sound / vibration / screen ===================
+let actx = null;
+function unlockAudio() {
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+  } catch {}
+}
+// ---- cyberpunk synth: detuned saws through a resonant filter, square-wave chirps ----
+function synth({ type = "sawtooth", f0, f1 = f0, start, dur, vol = 0.2, cut0 = 6000, cut1 = cut0, q = 8, detune = 0, curve = "exp" }) {
+  const g = actx.createGain(), flt = actx.createBiquadFilter();
+  flt.type = "lowpass"; flt.Q.value = q;
+  flt.frequency.setValueAtTime(cut0, start);
+  flt.frequency.exponentialRampToValueAtTime(Math.max(40, cut1), start + dur);
+  g.gain.setValueAtTime(0.0001, start);
+  g.gain.exponentialRampToValueAtTime(vol, start + 0.008);
+  g.gain.setValueAtTime(vol, start + dur * 0.7);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  flt.connect(g).connect(actx.destination);
+  const voices = detune ? [-detune, detune] : [0];
+  voices.forEach(d => {
+    const o = actx.createOscillator();
+    o.type = type; o.detune.value = d;
+    o.frequency.setValueAtTime(f0, start);
+    if (f1 !== f0) curve === "exp" ? o.frequency.exponentialRampToValueAtTime(f1, start + dur) : o.frequency.linearRampToValueAtTime(f1, start + dur);
+    o.connect(flt); o.start(start); o.stop(start + dur + 0.02);
+  });
+}
+const now = () => actx.currentTime + 0.02;
+function buzz(pattern) { try { navigator.vibrate && navigator.vibrate(pattern); } catch {} }
+
+/** End of rest / timer: "system alert" – 3 rising laser sweeps + a glitchy square arpeggio. */
+function ring() {
+  buzz([180, 70, 180, 70, 420]);
+  if (!actx) return;
+  const t = now();
+  for (let i = 0; i < 3; i++) {
+    const s = t + i * 0.42;
+    synth({ f0: 220, f1: 880, start: s, dur: 0.3, vol: 0.32, cut0: 400, cut1: 7000, q: 14, detune: 18 });
+    [1760, 1318, 1760, 2093].forEach((f, k) => synth({ type: "square", f0: f, start: s + 0.3 + k * 0.025, dur: 0.025, vol: 0.12 }));
+  }
+  synth({ f0: 110, f1: 55, start: t + 1.3, dur: 0.5, vol: 0.35, cut0: 1500, cut1: 200, q: 6, detune: 25 }); // sub drop
+}
+/** 3-2-1 countdown: short digital blip. */
+function beep() { if (actx) synth({ type: "square", f0: 1900, f1: 1300, start: now(), dur: 0.07, vol: 0.18, cut0: 5000 }); }
+/** Rep logged: rising data-chirp + bass thump. */
+function chirp() {
+  if (!actx) return;
+  const t = now();
+  synth({ type: "square", f0: 660, f1: 2640, start: t, dur: 0.09, vol: 0.14, cut0: 8000 });
+  synth({ type: "square", f0: 2640, start: t + 0.1, dur: 0.05, vol: 0.1 });
+  synth({ type: "sine", f0: 140, f1: 45, start: t, dur: 0.18, vol: 0.45 });
+}
+/** Any other button: tiny click. */
+function click() { if (actx) synth({ type: "square", f0: 3200, f1: 1600, start: now(), dur: 0.03, vol: 0.06 }); }
+/** Workout start / timer start: power-up sweep. */
+function powerUp() {
+  if (!actx) return;
+  const t = now();
+  synth({ f0: 80, f1: 640, start: t, dur: 0.45, vol: 0.25, cut0: 200, cut1: 5000, q: 12, detune: 20 });
+}
+/** Workout done: neon arpeggio. */
+function fanfare() {
+  buzz([60, 40, 60, 40, 200]);
+  if (!actx) return;
+  const t = now();
+  [440, 554, 659, 880, 1109, 1319].forEach((f, i) =>
+    synth({ f0: f, start: t + i * 0.09, dur: 0.22, vol: 0.18, cut0: 6000, cut1: 1200, detune: 12 }));
+  synth({ f0: 110, start: t, dur: 0.9, vol: 0.25, cut0: 900, cut1: 300, detune: 30 });
+}
+
+let wakeLock = null;
+async function keepAwake() {
+  try { if ("wakeLock" in navigator && document.visibilityState === "visible" && !wakeLock) {
+    wakeLock = await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release", () => { wakeLock = null; });
+  } } catch {}
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { keepAwake(); loop(); } });
+document.addEventListener("pointerdown", () => { unlockAudio(); keepAwake(); }, { passive: true });
+
+// =================== actions ===================
+function startWorkout() {
+  if (store.get("startDay", null) == null) store.set("startDay", epochDay());
+  S.week = weekNow(); rebuild();
+  S.session = []; S.timerEnd = 0; S.screen = "SET";
+  persist(); render();
+}
+function completeSet(value) {
+  S.timerEnd = 0;
+  const idx = S.session.length;
+  S.session.push(value);
+  const rest = steps[idx].ex.rest;
+  if (S.session.length >= steps.length) { S.screen = "DONE"; fanfare(); }
+  else if (rest <= 0) S.screen = "SET";
+  else { S.restEnd = Date.now() + rest * 1000; lastBeep = -1; S.screen = "REST"; }
+  persist(); render();
+}
+function skipExercise() {
+  S.timerEnd = 0;
+  const exIdx = steps[S.session.length].exIdx;
+  while (S.session.length < steps.length && steps[S.session.length].exIdx === exIdx) S.session.push(SKIPPED);
+  S.screen = S.session.length >= steps.length ? "DONE" : "SET";
+  persist(); render();
+}
+function goBack() {
+  if (repLock) return;
+  if (S.screen === "KG") S.screen = "SET";
+  else if (S.screen === "SET" && S.timerEnd > 0) S.timerEnd = 0;
+  else if (S.session.length === 0) S.screen = "HOME";
+  else {
+    if (S.session[S.session.length - 1] === SKIPPED) {
+      while (S.session.length && S.session[S.session.length - 1] === SKIPPED) S.session.pop();
+    } else S.session.pop();
+    S.screen = "SET";
+  }
+  persist(); render();
+}
+function finishWorkout() {
+  const log = store.get("log", []);
+  const d = today();
+  S.session.forEach((v, i) => { if (v !== SKIPPED) log.push([d, workout().name, steps[i].ex.name, steps[i].set, repsOf(v), kgOf(v) ?? ""]); });
+  store.set("log", log);
+  store.set("doneOn", `${d}#${S.workoutIdx}`);
+  S.session = []; S.workoutIdx = todayIdx(); manualPick = false; S.screen = "HOME";
+  persist(); render();
+}
+function lastTime(name) {
+  const log = store.get("log", []);
+  let date = null; const vals = [];
+  for (let i = log.length - 1; i >= 0; i--) {
+    const [d, , n, , v, kg] = log[i];
+    if (n !== name) continue;
+    if (date == null) date = d;
+    if (d !== date) break;
+    vals.unshift(kg === "" || kg == null ? v : { r: v, kg: +kg });
+  }
+  return vals.length ? vals : null;
+}
+const shouldAdd = (e, st, last) => e.addKg > 0 && last.length >= st.total && last.every(v => repsOf(v) >= e.repMax);
+/** Starting weight: previous set today, else last session's top weight (+ the bump if earned). */
+function defaultKg(idx) {
+  const st = steps[idx];
+  for (let i = idx - 1; i >= 0 && steps[i].exIdx === st.exIdx; i--) if (kgOf(S.session[i]) != null) return kgOf(S.session[i]);
+  const last = lastTime(st.ex.name) || [];
+  const kgs = last.map(kgOf).filter(k => k != null);
+  if (!kgs.length) return 0;
+  const top = Math.max(...kgs);
+  return shouldAdd(st.ex, st, last) ? top + st.ex.addKg : top;
+}
+function exportLog() {
+  const rows = [["date", "workout", "exercise", "set", "reps_or_seconds", "kg"], ...store.get("log", [])];
+  const blob = new Blob([rows.map(r => r.join(",")).join("\n")], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `gym-log-${today()}.csv`; a.click();
+}
+
+// =================== timer loop ===================
+let lastBeep = -1, loopId = null;
+const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+function loop() {
+  clearInterval(loopId);
+  if (!(S.screen === "REST" || (S.screen === "SET" && S.timerEnd > 0))) return;
+  const step = () => {
+    const end = S.screen === "REST" ? S.restEnd : S.timerEnd;
+    const left = end - Date.now();
+    if (left <= 0) {
+      clearInterval(loopId);
+      ring();
+      if (S.screen === "REST") { S.screen = "SET"; persist(); render(); }
+      else completeSet(steps[S.session.length].ex.seconds);
+      return;
+    }
+    const s = Math.ceil(left / 1000);
+    if (s <= 3 && s !== lastBeep) { lastBeep = s; beep(); }
+    const el = document.getElementById("big"); if (el) el.textContent = fmt(s);
+  };
+  step(); loopId = setInterval(step, 200);
+}
+
+// =================== rendering ===================
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const app = document.getElementById("app");
+const COLORS = { HOME: "--home", SET: "--set", KG: "--set", REST: "--rest", DONE: "--done" };
+
+function render() {
+  const color = getComputedStyle(document.documentElement).getPropertyValue(COLORS[S.screen]).trim();
+  document.body.style.background = color;
+  document.body.dataset.s = S.screen;
+  document.querySelector('meta[name="theme-color"]').content = color;
+  let h = "";
+  if (S.screen === "HOME") h = homeHTML();
+  else if (S.screen === "SET") h = setHTML();
+  else if (S.screen === "KG") h = kgHTML();
+  else if (S.screen === "REST") h = restHTML();
+  else h = doneHTML();
+  if (S.screen !== "HOME") h += `<button class="corner back" data-a="back" aria-label="Back">‹</button>`;
+  app.innerHTML = `<div class="screen">${h}</div>`;
+  // phone back gesture = our back button
+  const pushed = history.state && history.state.gym;
+  if (S.screen !== "HOME" && !pushed) history.pushState({ gym: 1 }, "");
+  if (S.screen === "HOME" && pushed) { ignorePop = true; history.back(); } // drop leftover entry so back on home exits
+  loop();
+}
+
+function homeHTML() {
+  const w = weekNow(), wk = workout();
+  const done = store.get("doneOn", "") === `${today()}#${S.workoutIdx}`;
+  return `
+    <div class="tag">sys.online</div>
+    <div class="l b y" data-a="resetWeek">WEEK ${w}</div>
+    <div class="s dim">${phaseText(w)}</div>
+    <div class="grow"></div>
+    <div class="tag">today's protocol</div>
+    <div class="l dim" style="margin-top:6px">${DAYS[S.workoutIdx]}</div>
+    <div class="name" data-a="nextDay" style="font-size:clamp(34px,11vw,48px)">${esc(wk.name)}</div>
+    ${wk.note ? `<div class="m" style="opacity:.85;margin-top:6px">${esc(wk.note)}</div>` : ""}
+    ${done ? `<div class="l b y" style="margin-top:12px">✓ done today</div>` : ""}
+    <div class="xs dimmer" style="margin-top:10px">tap name for another day</div>
+    <div class="grow"></div>
+    <button class="big-btn" data-a="start">START</button>
+    <button class="link" data-a="export" style="margin-top:6px">export log</button>`;
+}
+
+function setHTML() {
+  const idx = S.session.length, st = steps[idx], e = st.ex;
+  const next = workout().exercises[st.exIdx + 1];
+  let h = `<button class="corner skip" data-a="skip">skip ›</button>
+    <div class="l b y">${st.total > 1 ? `SET ${st.set} / ${st.total}` : "&nbsp;"}</div>
+    <div class="name">${esc(e.name)}</div>`;
+  if (!e.seconds) h += `<div class="xl">${e.amrap ? "AMRAP · max reps" : e.repMin === e.repMax ? `${e.repMin} reps` : `${e.repMin}–${e.repMax} reps`}</div>`;
+  if (e.note) h += `<div class="s dim" style="margin-top:4px">${esc(e.note)}</div>`;
+  if (!e.seconds) {
+    const last = lastTime(e.name);
+    if (last) {
+      h += `<div class="m dim" style="margin-top:6px">last time: ${last.map(fmtSet).join(" · ")}</div>`;
+      if (st.set === 1 && shouldAdd(e, st, last))
+        h += `<div class="l b y" style="margin-top:6px">▲ ADD ${e.addKg} kg</div>`;
+    }
+  }
+  h += `<div class="grow"></div>`;
+  if (e.seconds) {
+    const running = S.timerEnd > 0;
+    const shown = running ? Math.max(0, Math.ceil((S.timerEnd - Date.now()) / 1000)) : e.seconds;
+    h += `<div class="huge" id="big">${fmt(shown)}</div><div style="height:20px"></div>
+      <button class="big-btn" data-a="timer">${running ? "STOP" : "START TIMER"}</button>`;
+  } else {
+    const lo = e.amrap ? 1 : Math.max(1, e.repMin - 4), hi = e.amrap ? 25 : e.repMax + 4;
+    const cols = hi - lo + 1 > 16 ? 5 : 4;
+    h += `<div class="s dim" style="margin-bottom:6px">tap reps done</div>
+      <div class="grid ${cols === 5 ? "c5" : ""}" style="grid-template-columns:repeat(${cols},1fr)">`;
+    for (let n = lo; n <= hi; n++) {
+      const inR = !e.amrap && n >= e.repMin && n <= e.repMax;
+      h += `<button class="${inR ? "in" : ""}" data-a="reps" data-n="${n}">${n}</button>`;
+    }
+    h += `</div>`;
+  }
+  h += `<div class="grow"></div><div class="m dim">NEXT: ${esc(next ? next.name : "— last one —")}</div>`;
+  return h;
+}
+
+function kgHTML() {
+  const st = steps[S.session.length], e = st.ex;
+  const last = lastTime(e.name);
+  let h = `<div class="l b y">${st.total > 1 ? `SET ${st.set} / ${st.total}` : "&nbsp;"}</div>
+    <div class="name">${esc(e.name)}</div>
+    <div class="xl">${S.pendingReps} reps @</div>`;
+  if (last) h += `<div class="m dim" style="margin-top:6px">last time: ${last.map(fmtSet).join(" · ")}</div>`;
+  h += `<div class="grow"></div>
+    <div class="huge kg" id="kg">${S.kg > 0 ? fmtKg(S.kg) : "0"}<small>KG</small></div>
+    <div class="s dim" style="margin:2px 0 12px">${S.kg > 0 ? "set weight" : "0 = bodyweight"}</div>
+    <div class="grid c5 steps" style="grid-template-columns:repeat(5,1fr)">
+      ${KG_STEPS.map(d => `<button class="minus" data-a="kg" data-d="-${d}">−${d}</button>`).join("")}
+      ${KG_STEPS.map(d => `<button class="plus" data-a="kg" data-d="${d}">+${d}</button>`).join("")}
+    </div>
+    <div class="grow"></div>
+    <button class="big-btn" data-a="logKg">LOG SET</button>`;
+  return h;
+}
+
+function restHTML() {
+  const st = steps[S.session.length];
+  const left = Math.max(0, Math.ceil((S.restEnd - Date.now()) / 1000));
+  return `
+    <div class="grow"></div>
+    <div class="tag">cooldown</div>
+    <div class="xl b y">REST</div>
+    <div class="huge" id="big">${fmt(left)}</div>
+    <div class="tag" style="margin-top:16px">next up</div>
+    <div class="xl b">${esc(st.ex.name)}</div>
+    ${st.total > 1 ? `<div class="l" style="opacity:.8">set ${st.set} / ${st.total}</div>` : ""}
+    <div class="grow"></div>
+    <div class="row">
+      <button class="big-btn dark" data-a="plus30">+30s</button>
+      <button class="big-btn" data-a="skipRest">SKIP</button>
+    </div>`;
+}
+
+function doneHTML() {
+  return `
+    <div class="grow"></div>
+    <div class="tag">mission complete</div>
+    <div class="huge" style="font-size:64px">DONE</div>
+    <div class="l" style="opacity:.8">${esc(workout().name)}</div>
+    <div class="m dim" style="margin-top:10px">${S.session.filter(v => v !== SKIPPED).length} sets finished</div>
+    <div class="grow"></div>
+    <button class="big-btn" data-a="finish">FINISH</button>`;
+}
+
+// =================== input ===================
+let pressTimer = null;
+app.addEventListener("pointerdown", e => {
+  if (e.target.closest("[data-a=resetWeek]")) pressTimer = setTimeout(() => {
+    pressTimer = null;
+    if (confirm("Restart the program at week 1?")) { store.set("startDay", epochDay()); render(); }
+  }, 700);
+});
+app.addEventListener("pointerup", () => { clearTimeout(pressTimer); });
+let repLock = false;
+function logReps(btn) {
+  if (repLock) return;
+  repLock = true;
+  const n = +btn.dataset.n;
+  btn.classList.add("hit");
+  btn.parentElement.classList.add("locked");
+  const f = document.getElementById("flash");
+  f.querySelector(".n").textContent = n;
+  f.classList.remove("on"); void f.offsetWidth; f.classList.add("on");
+  chirp(); buzz(45);
+  setTimeout(() => {
+    repLock = false;
+    const idx = S.session.length;
+    if (steps[idx].ex.addKg > 0) { S.pendingReps = n; S.kg = defaultKg(idx); S.screen = "KG"; persist(); render(); }
+    else completeSet(n);
+  }, 420);
+}
+app.addEventListener("click", e => {
+  const t = e.target.closest("[data-a]"); if (!t) return;
+  const a = t.dataset.a;
+  if (a === "start" || a === "timer" && !(S.timerEnd > 0)) { powerUp(); buzz(30); }
+  else if (a !== "reps") { click(); buzz(15); }
+  switch (a) {
+    case "start": startWorkout(); break;
+    case "nextDay": S.workoutIdx = (S.workoutIdx + 1) % WORKOUTS.length; manualPick = true; persist(); render(); break;
+    case "export": exportLog(); break;
+    case "back": goBack(); break;
+    case "skip": skipExercise(); break;
+    case "reps": logReps(t); break;
+    case "timer":
+      if (S.timerEnd > 0) completeSet(Math.round((Date.now() - S.timerStart) / 1000));
+      else { S.timerStart = Date.now(); S.timerEnd = S.timerStart + steps[S.session.length].ex.seconds * 1000; lastBeep = -1; persist(); render(); }
+      break;
+    case "kg": {
+      S.kg = Math.max(0, Math.round((S.kg + +t.dataset.d) * 10) / 10); persist();
+      const el = document.getElementById("kg");
+      if (el) el.innerHTML = `${fmtKg(S.kg)}<small>KG</small>`;
+      if (el && el.nextElementSibling) el.nextElementSibling.textContent = S.kg > 0 ? "set weight" : "0 = bodyweight";
+      break;
+    }
+    case "logKg": chirp(); buzz(45); completeSet({ r: S.pendingReps, kg: S.kg }); break;
+    case "plus30": S.restEnd += 30000; persist(); render(); break;
+    case "skipRest": S.screen = "SET"; persist(); render(); break;
+    case "finish": finishWorkout(); break;
+  }
+});
+let ignorePop = false;
+window.addEventListener("popstate", () => {
+  if (ignorePop) { ignorePop = false; if (S.screen !== "HOME") history.pushState({ gym: 1 }, ""); return; }
+  if (S.screen !== "HOME") goBack();
+});
+// new day while sitting on home -> show the new day's workout
+setInterval(() => {
+  if (S.screen === "HOME" && !manualPick && S.workoutIdx !== todayIdx()) { S.workoutIdx = todayIdx(); render(); }
+}, 60000);
+
+render();
+keepAwake();
+if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
