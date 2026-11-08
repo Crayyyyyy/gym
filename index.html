@@ -232,6 +232,15 @@ const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(
 const epochDay = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);
 const todayIdx = () => (new Date().getDay() + 6) % 7;
 
+// =================== one-time reset ===================
+// Bump RESET.id to wipe progress on every device once; week 1 begins on RESET.start.
+const RESET = { id: "2026-11-09", start: Date.UTC(2026, 10, 9) / 86400000 }; // Mon 9 Nov 2026
+if (store.get("resetId", null) !== RESET.id) {
+  try { Object.keys(localStorage).filter(k => k.startsWith("gym.")).forEach(k => localStorage.removeItem(k)); } catch {}
+  store.set("startDay", RESET.start);
+  store.set("resetId", RESET.id);
+}
+
 // =================== state ===================
 let S = Object.assign({ screen: "HOME", workoutIdx: todayIdx(), week: 1, restEnd: 0, timerEnd: 0, timerStart: 0, session: [], pendingReps: 0, kg: 0 },
   store.get("state", {}));
@@ -243,7 +252,7 @@ const persist = () => store.set("state", S);
 
 function weekNow() {
   const start = store.get("startDay", null);
-  return start == null ? 1 : Math.floor((epochDay() - start) / 7) + 1;
+  return start == null ? 1 : Math.max(1, Math.floor((epochDay() - start) / 7) + 1);
 }
 function setsFor(e, w) {
   if (e.fixed) return e.sets;
