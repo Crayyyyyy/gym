@@ -4,7 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Gym</title>
-<meta name="theme-color" content="#1E3A8A">
+<meta name="theme-color" content="#0D0221">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -89,12 +92,14 @@
   #flash { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column;
     align-items: center; justify-content: center; pointer-events: none; opacity: 0; }
   #flash.on { animation: flash .5s ease-out forwards; }
-  #flash .n { font: 900 clamp(120px, 40vw, 190px)/1 var(--font); color: #fff;
-    text-shadow: 0 0 20px var(--yellow), 0 0 60px var(--yellow), 6px 0 var(--magenta), -6px 0 var(--cyan); }
-  #flash .t { font: 800 22px var(--font); letter-spacing: .4em; color: var(--yellow); text-shadow: 0 0 10px var(--yellow); margin-top: 8px; }
+  #flash { --fc: var(--yellow); }
+  #flash .n { font: 900 clamp(120px, 40vw, 190px)/1 var(--font); color: #fff; white-space: nowrap;
+    text-shadow: 0 0 20px var(--fc), 0 0 60px var(--fc), 6px 0 var(--magenta), -6px 0 var(--cyan); }
+  #flash .n.long { font-size: clamp(80px, 27vw, 140px); }
+  #flash .t { font: 800 22px var(--font); letter-spacing: .4em; color: var(--fc); text-shadow: 0 0 10px var(--fc); margin-top: 8px; }
   @keyframes flash {
-    0% { opacity: 0; transform: scale(1.4) skewX(-10deg); background: rgba(252,238,10,.0); }
-    15% { opacity: 1; transform: scale(1) skewX(0); background: rgba(252,238,10,.18); }
+    0% { opacity: 0; transform: scale(1.4) skewX(-10deg); background: transparent; }
+    15% { opacity: 1; transform: scale(1) skewX(0); background: color-mix(in srgb, var(--fc) 18%, transparent); }
     30% { transform: translateX(-6px); }
     40% { transform: translateX(4px); }
     50% { transform: none; }
@@ -107,12 +112,53 @@
   .grid.steps button { height: 64px; font-size: 20px; }
   .grid.steps button.minus { color: var(--magenta); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--magenta) 55%, transparent); }
   .grid.steps button.plus { color: var(--cyan); }
+  /* ===== tap fx: shockwave, floating labels, MISS ===== */
+  #fx { position: fixed; inset: 0; pointer-events: none; z-index: 45; overflow: hidden; }
+  .ring { position: absolute; width: 24px; height: 24px; margin: -12px 0 0 -12px; border: 2px solid var(--c);
+    box-shadow: 0 0 12px var(--c), inset 0 0 8px var(--c); transform: rotate(45deg) scale(.2);
+    animation: ring .45s ease-out forwards; }
+  @keyframes ring { to { transform: rotate(45deg) scale(5.5); opacity: 0; border-width: 1px; } }
+  .pop { position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
+    font: 900 26px var(--font); letter-spacing: .12em; color: #fff;
+    text-shadow: 0 0 10px var(--c), 0 0 24px var(--c), 2px 0 var(--magenta), -2px 0 var(--cyan);
+    animation: pop .65s ease-out forwards; }
+  @keyframes pop {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(1.8) skewX(-12deg); }
+    15% { opacity: 1; transform: translate(-50%, -60%) scale(1); }
+    25% { transform: translate(calc(-50% - 4px), -65%); }
+    35% { transform: translate(calc(-50% + 3px), -70%); }
+    100% { opacity: 0; transform: translate(-50%, -190%); }
+  }
+  .pop.miss { font-size: 46px; color: #FF003C; letter-spacing: .2em;
+    text-shadow: 0 0 12px #FF003C, 0 0 36px #FF003C, 4px 0 #fff, -4px 0 #7a0018; animation: miss .7s ease-out forwards; }
+  @keyframes miss {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); }
+    12% { opacity: 1; transform: translate(-50%, -50%) scale(1); clip-path: none; }
+    20% { transform: translate(calc(-50% - 8px), -50%) skewX(18deg); clip-path: inset(0 0 55% 0); }
+    28% { transform: translate(calc(-50% + 8px), -50%) skewX(-18deg); clip-path: inset(45% 0 0 0); }
+    36% { transform: translate(-50%, -50%); clip-path: none; }
+    75% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -80%) scale(.9); }
+  }
+  #missTint { position: fixed; inset: 0; pointer-events: none; z-index: 44; opacity: 0;
+    box-shadow: inset 0 0 90px rgba(255,0,60,.75); }
+  #missTint.on { animation: tint .4s ease-out; }
+  @keyframes tint { 0% { opacity: 1; } 100% { opacity: 0; } }
+  #app.shake { animation: shake .3s linear; }
+  @keyframes shake { 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }
+  .big-btn.hit { background: #fff !important; color: #000 !important; transform: scale(1.04); transition: transform .08s; }
+  .corner.hit, .link.hit, .name.hit, [data-a=resetWeek].hit { color: #fff; filter: drop-shadow(0 0 10px #fff); }
+  .kg.bump { animation: bump .18s ease-out; }
+  @keyframes bump { 0% { transform: scale(1.12); filter: brightness(1.8); } 100% { transform: none; } }
   @media (prefers-reduced-motion: reduce) { .name { animation: none; } }
 </style>
 </head>
 <body>
 <div id="app"></div>
 <div id="flash"><div class="n"></div><div class="t">LOGGED</div></div>
+<div id="missTint"></div>
+<div id="fx"></div>
 <script>
 "use strict";
 
@@ -277,6 +323,15 @@ function chirp() {
 }
 /** Any other button: tiny click. */
 function click() { if (actx) synth({ type: "square", f0: 3200, f1: 1600, start: now(), dur: 0.03, vol: 0.06 }); }
+/** Tap on empty space: harsh low error buzz. */
+function missSound() {
+  if (!actx) return;
+  const t = now();
+  synth({ f0: 180, f1: 70, start: t, dur: 0.14, vol: 0.32, cut0: 1800, cut1: 300, q: 10, detune: 30 });
+  synth({ f0: 150, f1: 55, start: t + 0.13, dur: 0.2, vol: 0.32, cut0: 1500, cut1: 200, q: 10, detune: 30 });
+}
+/** Stepper tap: pitched blip (up = higher). */
+function blip(up) { if (actx) synth({ type: "square", f0: up ? 1400 : 700, f1: up ? 2100 : 420, start: now(), dur: 0.06, vol: 0.12, cut0: 6000 }); }
 /** Workout start / timer start: power-up sweep. */
 function powerUp() {
   if (!actx) return;
@@ -410,6 +465,7 @@ const COLORS = { HOME: "--home", SET: "--set", KG: "--set", REST: "--rest", DONE
 function render() {
   const color = getComputedStyle(document.documentElement).getPropertyValue(COLORS[S.screen]).trim();
   document.body.style.background = color;
+  document.documentElement.style.background = color;
   document.body.dataset.s = S.screen;
   document.querySelector('meta[name="theme-color"]').content = color;
   let h = "";
@@ -541,51 +597,119 @@ app.addEventListener("pointerdown", e => {
 });
 app.addEventListener("pointerup", () => { clearTimeout(pressTimer); });
 let repLock = false;
-function logReps(btn) {
+// ---------- fx helpers ----------
+const fxLayer = document.getElementById("fx");
+const accent = () => getComputedStyle(document.body).getPropertyValue("--acc").trim() || "#FCEE0A";
+function spawn(cls, x, y, color, text = "") {
+  const el = document.createElement("div");
+  el.className = cls; el.textContent = text;
+  el.style.left = x + "px"; el.style.top = y + "px"; el.style.setProperty("--c", color);
+  fxLayer.appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+function bigFlash(text, label, color = "#FCEE0A") {
+  const f = document.getElementById("flash"), n = f.querySelector(".n");
+  n.textContent = text; n.classList.toggle("long", String(text).length > 3);
+  f.querySelector(".t").textContent = label;
+  f.style.setProperty("--fc", color);
+  f.classList.remove("on"); void f.offsetWidth; f.classList.add("on");
+}
+function hit(el, ms = 0) { el.classList.add("hit"); if (ms) setTimeout(() => el.classList.remove("hit"), ms); }
+/** The rep-style "LOGGED" moment: lock input, light the button, full-screen flash, then act. */
+function slam(btn, text, label, color, sound, then, delay = 420) {
   if (repLock) return;
   repLock = true;
+  hit(btn);
+  if (btn.parentElement.classList.contains("grid")) btn.parentElement.classList.add("locked");
+  bigFlash(text, label, color);
+  sound();
+  setTimeout(() => { repLock = false; then(); }, delay);
+}
+function miss(x, y) {
+  spawn("ring", x, y, "#FF003C");
+  spawn("pop miss", x, y, "#FF003C", "MISS");
+  const t = document.getElementById("missTint");
+  t.classList.remove("on"); void t.offsetWidth; t.classList.add("on");
+  app.classList.remove("shake"); void app.offsetWidth; app.classList.add("shake");
+  missSound(); buzz([40, 40, 40]);
+}
+document.addEventListener("pointerdown", e => {
+  if (e.button > 0 || e.target.closest("[data-a]")) return;
+  miss(e.clientX, e.clientY);
+});
+
+function logReps(btn) {
   const n = +btn.dataset.n;
-  btn.classList.add("hit");
-  btn.parentElement.classList.add("locked");
-  const f = document.getElementById("flash");
-  f.querySelector(".n").textContent = n;
-  f.classList.remove("on"); void f.offsetWidth; f.classList.add("on");
-  chirp(); buzz(45);
-  setTimeout(() => {
-    repLock = false;
+  slam(btn, n, "LOGGED", "#FCEE0A", () => { chirp(); buzz(45); }, () => {
     const idx = S.session.length;
     if (steps[idx].ex.addKg > 0) { S.pendingReps = n; S.kg = defaultKg(idx); S.screen = "KG"; persist(); render(); }
     else completeSet(n);
-  }, 420);
+  });
 }
+
+// big buttons: [flash text, flash label]
+const BIG = {
+  start: ["GO", "PROTOCOL START"], skip: ["SKIP", "EXERCISE SKIPPED"], skipRest: ["GO", "REST OVER"],
+  plus30: ["+30", "SECONDS ADDED"], finish: ["✓", "SAVED"],
+};
+const SMALL = { back: "BACK", nextDay: "NEXT DAY", export: "EXPORT", resetWeek: "HOLD TO RESET" };
+
 app.addEventListener("click", e => {
-  const t = e.target.closest("[data-a]"); if (!t) return;
+  const t = e.target.closest("[data-a]"); if (!t || repLock) return;
   const a = t.dataset.a;
-  if (a === "start" || a === "timer" && !(S.timerEnd > 0)) { powerUp(); buzz(30); }
-  else if (a !== "reps") { click(); buzz(15); }
-  switch (a) {
-    case "start": startWorkout(); break;
-    case "nextDay": S.workoutIdx = (S.workoutIdx + 1) % WORKOUTS.length; manualPick = true; persist(); render(); break;
-    case "export": exportLog(); break;
-    case "back": goBack(); break;
-    case "skip": skipExercise(); break;
-    case "reps": logReps(t); break;
-    case "timer":
-      if (S.timerEnd > 0) completeSet(Math.round((Date.now() - S.timerStart) / 1000));
-      else { S.timerStart = Date.now(); S.timerEnd = S.timerStart + steps[S.session.length].ex.seconds * 1000; lastBeep = -1; persist(); render(); }
-      break;
-    case "kg": {
-      S.kg = Math.max(0, Math.round((S.kg + +t.dataset.d) * 10) / 10); persist();
-      const el = document.getElementById("kg");
-      if (el) el.innerHTML = `${fmtKg(S.kg)}<small>KG</small>`;
-      if (el && el.nextElementSibling) el.nextElementSibling.textContent = S.kg > 0 ? "set weight" : "0 = bodyweight";
-      break;
-    }
-    case "logKg": chirp(); buzz(45); completeSet({ r: S.pendingReps, kg: S.kg }); break;
-    case "plus30": S.restEnd += 30000; persist(); render(); break;
-    case "skipRest": S.screen = "SET"; persist(); render(); break;
-    case "finish": finishWorkout(); break;
+  const r = t.getBoundingClientRect();
+  const x = e.clientX || r.left + r.width / 2, y = e.clientY || r.top + r.height / 2;
+  const acc = accent();
+
+  if (a === "reps") return logReps(t);
+  if (a === "logKg") {
+    const kg = S.kg;
+    return slam(t, kg > 0 ? fmtKg(kg) : "BW", kg > 0 ? "KG LOGGED" : "BODYWEIGHT", "#FCEE0A",
+      () => { chirp(); buzz(45); }, () => completeSet({ r: S.pendingReps, kg }));
   }
+  if (a === "timer") {
+    spawn("ring", x, y, acc);
+    if (S.timerEnd > 0) {
+      const secs = Math.round((Date.now() - S.timerStart) / 1000);
+      return slam(t, fmt(secs), "TIME LOGGED", acc, () => { chirp(); buzz(45); }, () => completeSet(secs));
+    }
+    return slam(t, "GO", "TIMER ON", acc, () => { powerUp(); buzz(30); }, () => {
+      S.timerStart = Date.now(); S.timerEnd = S.timerStart + steps[S.session.length].ex.seconds * 1000;
+      lastBeep = -1; persist(); render();
+    }, 380);
+  }
+  if (BIG[a]) {
+    spawn("ring", x, y, acc);
+    const color = a === "skip" ? "#FF2A6D" : acc;
+    const sound = a === "start" ? () => { powerUp(); buzz(30); } : () => { click(); chirp(); buzz(30); };
+    return slam(t, BIG[a][0], BIG[a][1], color, sound, () => {
+      if (a === "start") startWorkout();
+      else if (a === "skip") skipExercise();
+      else if (a === "skipRest") { S.screen = "SET"; persist(); render(); }
+      else if (a === "plus30") { S.restEnd += 30000; persist(); render(); }
+      else if (a === "finish") finishWorkout();
+    }, 380);
+  }
+  if (a === "kg") {
+    const d = +t.dataset.d, up = d > 0, c = up ? "#00F0FF" : "#FF2A6D";
+    spawn("ring", x, y, c); spawn("pop", x, y - 30, c, (up ? "+" : "−") + Math.abs(d));
+    hit(t, 160); blip(up); buzz(12);
+    S.kg = Math.max(0, Math.round((S.kg + d) * 10) / 10); persist();
+    const el = document.getElementById("kg");
+    if (el) {
+      el.innerHTML = `${fmtKg(S.kg)}<small>KG</small>`;
+      el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
+      if (el.nextElementSibling) el.nextElementSibling.textContent = S.kg > 0 ? "set weight" : "0 = bodyweight";
+    }
+    return;
+  }
+  // small controls: back, next day, export, week label
+  spawn("ring", x, y, acc);
+  if (SMALL[a]) spawn("pop", x, y + (y < 120 ? 50 : -30), acc, SMALL[a]);
+  hit(t, 200); click(); buzz(15);
+  if (a === "back") goBack();
+  else if (a === "nextDay") { S.workoutIdx = (S.workoutIdx + 1) % WORKOUTS.length; manualPick = true; persist(); render(); }
+  else if (a === "export") exportLog();
 });
 let ignorePop = false;
 window.addEventListener("popstate", () => {
